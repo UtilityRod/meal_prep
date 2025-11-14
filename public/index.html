@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Meal Prep Tester</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      margin: 0;
+      padding: 16px;
+      background: #f5f5f5;
+    }
+    h1, h2, h3 {
+      margin-top: 0;
+    }
+    .layout {
+      display: grid;
+      grid-template-columns: 1.5fr 1.5fr 2fr;
+      gap: 16px;
+      align-items: flex-start;
+    }
+    .card {
+      background: #fff;
+      border-radius: 10px;
+      padding: 12px 14px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
+    label {
+      display: block;
+      font-size: 0.8rem;
+      margin-top: 6px;
+      margin-bottom: 2px;
+      color: #555;
+    }
+    input, textarea, select {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 6px 8px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      font-size: 0.9rem;
+    }
+    textarea {
+      min-height: 60px;
+      resize: vertical;
+    }
+    button {
+      margin-top: 8px;
+      padding: 6px 10px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 600;
+      background: #2563eb;
+      color: white;
+    }
+    button.secondary {
+      background: #e5e7eb;
+      color: #111827;
+    }
+    .list {
+      margin-top: 8px;
+      max-height: 260px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+    .item {
+      border-radius: 8px;
+      padding: 6px 8px;
+      margin-bottom: 6px;
+      background: #f9fafb;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+    .item-main {
+      font-size: 0.9rem;
+    }
+    .pill {
+      font-size: 0.7rem;
+      padding: 2px 6px;
+      border-radius: 999px;
+      background: #e5e7eb;
+    }
+    .muted {
+      font-size: 0.8rem;
+      color: #6b7280;
+    }
+    .section-title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 8px;
+    }
+    .error {
+      color: #b91c1c;
+      font-size: 0.8rem;
+      margin-top: 4px;
+    }
+    .success {
+      color: #15803d;
+      font-size: 0.8rem;
+      margin-top: 4px;
+    }
+    small {
+      font-size: 0.75rem;
+      color: #6b7280;
+    }
+  </style>
+</head>
+<body>
+  <h1>Meal Prep API Tester</h1>
+  <p class="muted">Simple UI to hit your <code>/v1</code> endpoints.</p>
+
+  <div class="layout">
+    <!-- Recipes -->
+    <div class="card">
+      <div class="section-title-row">
+        <h2>Recipes</h2>
+        <button type="button" class="secondary" onclick="loadRecipes()">Reload</button>
+      </div>
+
+      <form id="recipe-form">
+        <h3>Create Recipe</h3>
+        <label>Title</label>
+        <input id="recipe-title" required />
+
+        <label>Description</label>
+        <textarea id="recipe-description"></textarea>
+
+        <label>Servings</label>
+        <input id="recipe-servings" type="number" min="1" />
+
+        <label>Prep Time (min)</label>
+        <input id="recipe-prep" type="number" min="0" />
+
+        <label>Cook Time (min)</label>
+        <input id="recipe-cook" type="number" min="0" />
+
+        <label>
+          <input id="recipe-public" type="checkbox" />
+          Public
+        </label>
+
+        <button type="submit">Save Recipe</button>
+        <div id="recipe-form-msg" class="muted"></div>
+      </form>
+
+      <h3 style="margin-top: 16px;">Recipes List</h3>
+      <small>Click "Select" to work with ingredients & meal plans.</small>
+      <div id="recipes-list" class="list"></div>
+    </div>
+
+    <!-- Ingredients -->
+    <div class="card">
+      <div class="section-title-row">
+        <h2>Ingredients</h2>
+        <span id="ingredients-selected-recipe" class="muted">No recipe selected</span>
+      </div>
+
+      <form id="ingredient-form">
+        <h3>Add Ingredient to Selected Recipe</h3>
+        <label>Name</label>
+        <input id="ingredient-name" required />
+
+        <label>Quantity</label>
+        <input id="ingredient-quantity" />
+
+        <label>Unit</label>
+        <input id="ingredient-unit" />
+
+        <button type="submit">Add Ingredient</button>
+        <div id="ingredient-form-msg" class="muted"></div>
+      </form>
+
+      <h3 style="margin-top: 16px;">Ingredients for Recipe</h3>
+      <div id="ingredients-list" class="list"></div>
+    </div>
+
+    <!-- Meal plans -->
+    <div class="card">
+      <div class="section-title-row">
+        <h2>Meal Plans</h2>
+        <button type="button" class="secondary" onclick="loadMealPlans()">Reload</button>
+      </div>
+
+      <form id="mealplan-form">
+        <h3>Create Meal Plan</h3>
+        <label>Name</label>
+        <input id="mealplan-name" required />
+
+        <label>Start Date</label>
+        <input id="mealplan-start" type="date" required />
+
+        <label>End Date</label>
+        <input id="mealplan-end" type="date" required />
+
+        <button type="submit">Save Meal Plan</button>
+        <div id="mealplan-form-msg" class="muted"></div>
+      </form>
+
+      <h3 style="margin-top: 16px;">Meal Plans</h3>
+      <small>Click "Select" to attach recipes.</small>
+      <div id="mealplans-list" class="list"></div>
+
+      <hr style="margin: 12px 0;" />
+
+      <div>
+        <div class="section-title-row">
+          <h3>Plan Recipes</h3>
+          <span id="plan-selected" class="muted">No meal plan selected</span>
+        </div>
+
+        <form id="planrecipe-form">
+          <label>Recipe</label>
+          <select id="plan-recipe-select"></select>
+
+          <label>Meal Type</label>
+          <input id="plan-meal-type" placeholder="breakfast / lunch / dinner / snack" />
+
+          <label>Planned Date</label>
+          <input id="plan-date" type="date" />
+
+          <button type="submit">Attach Recipe to Plan</button>
+          <div id="planrecipe-form-msg" class="muted"></div>
+        </form>
+
+        <h4 style="margin-top: 12px;">Entries for Selected Plan</h4>
+        <div id="planrecipes-list" class="list"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const apiBase = "/v1";
+
+    let recipes = [];
+    let mealPlans = [];
+    let selectedRecipeId = null;
+    let selectedMealPlanId = null;
+
+    // ---------- Helpers ----------
+
+    function setMessage(id, text, isError = false) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.textContent = text || "";
+      el.className = isError ? "error" : text ? "success" : "muted";
+      if (text) {
+        setTimeout(() => {
+          if (el.textContent === text) {
+            el.textContent = "";
+            el.className = "muted";
+          }
+        }, 3000);
+      }
+    }
+
+    function formatDate(d) {
+      if (!d) return "";
+      try {
+        return new Date(d).toISOString().slice(0, 10);
+      } catch {
+        return d;
+      }
+    }
+
+    // ---------- Recipes ----------
+
+    async function loadRecipes() {
+      try {
+        const res = await fetch(`${apiBase}/recipes`);
+        if (!res.ok) throw new Error("Failed to load recipes");
+        recipes = await res.json();
+        renderRecipes();
+        populatePlanRecipeSelect();
+      } catch (err) {
+        console.error(err);
+        setMessage("recipe-form-msg", err.message, true);
+      }
+    }
+
+    function renderRecipes() {
+      const list = document.getElementById("recipes-list");
+      list.innerHTML = "";
+      if (!recipes.length) {
+        list.innerHTML = `<div class="muted">No recipes yet.</div>`;
+        return;
+      }
+
+      recipes.forEach((r) => {
+        const div = document.createElement("div");
+        div.className = "item";
+
+        const left = document.createElement("div");
+        left.className = "item-main";
+        left.innerHTML = `
+          <strong>#${r.id}</strong> ${r.title || ""}
+          <div class="muted">
+            ${r.description ? r.description : ""}
+          </div>
+        `;
+
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.textContent = "Select";
+        btn.className = "secondary";
+        btn.onclick = () => selectRecipe(r.id);
+
+        div.appendChild(left);
+        div.appendChild(btn);
+        list.appendChild(div);
+      });
+    }
+
+    function selectRecipe(id) {
+      selectedRecipeId = id;
+      const recipe = recipes.find((r) => r.id === id);
+      const label = document.getElementById("ingredients-selected-recipe");
+      label.textContent = recipe ? `Recipe #${id}: ${recipe.title}` : `Recipe #${id}`;
+      loadIngredientsForRecipe(id);
+    }
+
+    async function loadIngredientsForRecipe(id) {
+      try {
+        const res = await fetch(`${apiBase}/recipes/${id}/ingredients`);
+        if (!res.ok) throw new Error("Failed to load ingredients");
+        const ingredients = await res.json();
+        renderIngredients(ingredients);
+      } catch (err) {
+        console.error(err);
+        setMessage("ingredient-form-msg", err.message, true);
+      }
+    }
+
+    function renderIngredients(ingredients) {
+      const list = document.getElementById("ingredients-list");
+      list.innerHTML = "";
+      if (!selectedRecipeId) {
+        list.innerHTML = `<div class="muted">Select a recipe first.</div>`;
+        return;
+      }
+      if (!ingredients.length) {
+        list.innerHTML = `<div class="muted">No ingredients for this recipe.</div>`;
+        return;
+      }
+
+      ingredients.forEach((ing) => {
+        const div = document.createElement("div");
+        div.className = "item";
+        const qty = [ing.quantity, ing.unit].filter(Boolean).join(" ");
+        div.innerHTML = `
+          <div class="item-main">
+            <strong>${ing.name}</strong>
+            <div class="muted">${qty || ""}</div>
+          </div>
+          <span class="pill">#${ing.id}</span>
+        `;
+        list.appendChild(div);
+      });
+    }
+
+    // ---------- Meal Plans ----------
+
+    async function loadMealPlans() {
+      try {
+        const res = await fetch(`${apiBase}/meal-plans`);
+        if (!res.ok) throw new Error("Failed to load meal plans");
+        mealPlans = await res.json();
+        renderMealPlans();
+      } catch (err) {
+        console.error(err);
+        setMessage("mealplan-form-msg", err.message, true);
+      }
+    }
+
+    function renderMealPlans() {
+      const list = document.getElementById("mealplans-list");
+      list.innerHTML = "";
+      if (!mealPlans.length) {
+        list.innerHTML = `<div class="muted">No meal plans yet.</div>`;
+        return;
+      }
+
+      mealPlans.forEach((mp) => {
+        const div = document.createElement("div");
+        div.className = "item";
+
+        const left = document.createElement("div");
+        left.className = "item-main";
+        left.innerHTML = `
+          <strong>#${mp.id}</strong> ${mp.name}
+          <div class="muted">${formatDate(mp.start_date || mp.startDate)} → ${formatDate(mp.end_date || mp.endDate)}</div>
+        `;
+
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.textContent = "Select";
+        btn.className = "secondary";
+        btn.onclick = () => selectMealPlan(mp.id);
+
+        div.appendChild(left);
+        div.appendChild(btn);
+        list.appendChild(div);
+      });
+    }
+
+    function selectMealPlan(id) {
+      selectedMealPlanId = id;
+      const mp = mealPlans.find((m) => m.id === id);
+      const label = document.getElementById("plan-selected");
+      if (mp) {
+        label.textContent = `Meal Plan #${id}: ${mp.name}`;
+      } else {
+        label.textContent = `Meal Plan #${id}`;
+      }
+      loadMealPlanRecipes(id);
+    }
+
+    async function loadMealPlanRecipes(mealPlanId) {
+      try {
+        const res = await fetch(`${apiBase}/meal-plans/${mealPlanId}/recipes`);
+        if (!res.ok) throw new Error("Failed to load plan recipes");
+        const data = await res.json();
+        renderMealPlanRecipes(data);
+      } catch (err) {
+        console.error(err);
+        setMessage("planrecipe-form-msg", err.message, true);
+      }
+    }
+
+    function renderMealPlanRecipes(entries) {
+      const list = document.getElementById("planrecipes-list");
+      list.innerHTML = "";
+      if (!selectedMealPlanId) {
+        list.innerHTML = `<div class="muted">Select a meal plan first.</div>`;
+        return;
+      }
+      if (!entries.length) {
+        list.innerHTML = `<div class="muted">No recipes in this plan yet.</div>`;
+        return;
+      }
+
+      entries.forEach((e) => {
+        const div = document.createElement("div");
+        div.className = "item";
+
+        const recipe = recipes.find((r) => r.id === e.recipe_id || r.id === e.recipeId);
+        const name = recipe ? recipe.title : `Recipe #${e.recipe_id || e.recipeId}`;
+        const mealType = e.meal_type || e.mealType || "";
+        const date = formatDate(e.planned_date || e.plannedDate);
+
+        const left = document.createElement("div");
+        left.className = "item-main";
+        left.innerHTML = `
+          <strong>${name}</strong>
+          <div class="muted">
+            ${mealType ? mealType : ""} ${date ? " · " + date : ""}
+          </div>
+        `;
+
+        const badge = document.createElement("span");
+        badge.className = "pill";
+        badge.textContent = `#${e.id}`;
+
+        div.appendChild(left);
+        div.appendChild(badge);
+        list.appendChild(div);
+      });
+    }
+
+    function populatePlanRecipeSelect() {
+      const sel = document.getElementById("plan-recipe-select");
+      sel.innerHTML = "";
+      if (!recipes.length) {
+        const opt = document.createElement("option");
+        opt.value = "";
+        opt.textContent = "No recipes yet";
+        sel.appendChild(opt);
+        return;
+      }
+      recipes.forEach((r) => {
+        const opt = document.createElement("option");
+        opt.value = r.id;
+        opt.textContent = `#${r.id} - ${r.title}`;
+        sel.appendChild(opt);
+      });
+    }
+
+    // ---------- Form bindings ----------
+
+    document.getElementById("recipe-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const title = document.getElementById("recipe-title").value.trim();
+      const description = document.getElementById("recipe-description").value.trim();
+      const servings = document.getElementById("recipe-servings").value;
+      const prep = document.getElementById("recipe-prep").value;
+      const cook = document.getElementById("recipe-cook").value;
+      const isPublic = document.getElementById("recipe-public").checked;
+
+      try {
+        const res = await fetch(`${apiBase}/recipes`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title,
+            description: description || null,
+            servings: servings ? Number(servings) : null,
+            prep_time: prep ? Number(prep) : null,
+            cook_time: cook ? Number(cook) : null,
+            is_public: isPublic
+          })
+        });
+        if (!res.ok) throw new Error("Failed to create recipe");
+        const created = await res.json();
+        setMessage("recipe-form-msg", `Created recipe #${created.id}`);
+        document.getElementById("recipe-form").reset();
+        await loadRecipes();
+      } catch (err) {
+        console.error(err);
+        setMessage("recipe-form-msg", err.message, true);
+      }
+    });
+
+    document.getElementById("ingredient-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!selectedRecipeId) {
+        setMessage("ingredient-form-msg", "Select a recipe first", true);
+        return;
+      }
+      const name = document.getElementById("ingredient-name").value.trim();
+      const quantity = document.getElementById("ingredient-quantity").value.trim();
+      const unit = document.getElementById("ingredient-unit").value.trim();
+
+      try {
+        const res = await fetch(`${apiBase}/recipes/${selectedRecipeId}/ingredients`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name,
+            quantity: quantity || null,
+            unit: unit || null
+          })
+        });
+        if (!res.ok) throw new Error("Failed to add ingredient");
+        setMessage("ingredient-form-msg", "Ingredient added");
+        document.getElementById("ingredient-form").reset();
+        await loadIngredientsForRecipe(selectedRecipeId);
+      } catch (err) {
+        console.error(err);
+        setMessage("ingredient-form-msg", err.message, true);
+      }
+    });
+
+    document.getElementById("mealplan-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const name = document.getElementById("mealplan-name").value.trim();
+      const start = document.getElementById("mealplan-start").value;
+      const end = document.getElementById("mealplan-end").value;
+
+      try {
+        const res = await fetch(`${apiBase}/meal-plans`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name,
+            start_date: start,
+            end_date: end
+          })
+        });
+        if (!res.ok) throw new Error("Failed to create meal plan");
+        const created = await res.json();
+        setMessage("mealplan-form-msg", `Created meal plan #${created.id}`);
+        document.getElementById("mealplan-form").reset();
+        await loadMealPlans();
+      } catch (err) {
+        console.error(err);
+        setMessage("mealplan-form-msg", err.message, true);
+      }
+    });
+
+    document.getElementById("planrecipe-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!selectedMealPlanId) {
+        setMessage("planrecipe-form-msg", "Select a meal plan first", true);
+        return;
+      }
+      const recipeId = document.getElementById("plan-recipe-select").value;
+      if (!recipeId) {
+        setMessage("planrecipe-form-msg", "No recipe selected", true);
+        return;
+      }
+      const mealType = document.getElementById("plan-meal-type").value.trim();
+      const date = document.getElementById("plan-date").value;
+
+      try {
+        const res = await fetch(`${apiBase}/meal-plans/${selectedMealPlanId}/recipes`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            recipe_id: Number(recipeId),
+            meal_type: mealType || null,
+            planned_date: date || null
+          })
+        });
+        if (!res.ok) throw new Error("Failed to attach recipe");
+        setMessage("planrecipe-form-msg", "Recipe attached to plan");
+        document.getElementById("planrecipe-form").reset();
+        await loadMealPlanRecipes(selectedMealPlanId);
+      } catch (err) {
+        console.error(err);
+        setMessage("planrecipe-form-msg", err.message, true);
+      }
+    });
+
+    // ---------- Initial load ----------
+    (async function init() {
+      await loadRecipes();
+      await loadMealPlans();
+    })();
+  </script>
+</body>
+</html>
