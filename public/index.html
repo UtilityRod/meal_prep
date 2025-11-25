@@ -1,137 +1,191 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Meal Planner Admin</title>
-  <style>
-    body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      margin: 0;
-      padding: 16px;
-      background: #f5f5f5;
-    }
-    h1 {
-      margin: 0 0 12px;
-    }
-    h2, h3, h4 {
-      margin: 0 0 8px;
-    }
-    .small {
-      font-size: 12px;
-      color: #555;
-    }
-    .error {
-      color: #b00020;
-      font-size: 13px;
-      margin-top: 4px;
-    }
-    .success {
-      color: #0a7a1b;
-      font-size: 13px;
-      margin-top: 4px;
-    }
+<meta charset="UTF-8">
+<img src="/app/assets/MealPlannerAdmin.png" alt="Ingredients">
+<style>
+/* Retro playful theme: tans, browns, burnt red accents */
+body {
+font-family: "Baloo 2", "Comic Neue", "Fredoka", Arial, sans-serif;
+margin: 0;
+padding: 16px;
+background: #f2e8dc; /* soft tan */
+color: #4a3a2c; /* warm brown */
+}
 
-    .layout {
-      display: flex;
-      gap: 16px;
-      align-items: flex-start;
-    }
-    .panel {
-      flex: 1;
-      min-width: 0;
-      background: #fff;
-      border-radius: 4px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-      padding: 12px 14px;
-      box-sizing: border-box;
-    }
-    .panel-section {
-      margin-bottom: 16px;
-      border-top: 1px solid #e0e0e0;
-      padding-top: 10px;
-    }
-    .panel-section:first-of-type {
-      border-top: none;
-      padding-top: 0;
-    }
 
-    label {
-      display: block;
-      font-size: 13px;
-      margin-bottom: 3px;
-    }
-    input, textarea, select {
-      box-sizing: border-box;
-      width: 100%;
-      padding: 6px 8px;
-      margin-bottom: 6px;
-      border-radius: 3px;
-      border: 1px solid #ccc;
-      font-size: 13px;
-    }
-    textarea {
-      resize: vertical;
-      min-height: 50px;
-    }
-    button {
-      padding: 5px 9px;
-      border-radius: 3px;
-      border: 1px solid #888;
-      background: #eee;
-      font-size: 13px;
-      cursor: pointer;
-    }
-    button:hover {
-      background: #e0e0e0;
-    }
+h1 {
+margin: 0 0 12px;
+color: #7c2e1c; /* burnt red */
+font-weight: 800;
+letter-spacing: 1px;
+}
 
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 12px;
-      margin-top: 6px;
-    }
-    th, td {
-      border: 1px solid #ddd;
-      padding: 4px 6px;
-      text-align: left;
-      vertical-align: top;
-    }
-    th {
-      background: #f0f0f0;
-    }
-    .text-muted {
-      color: #777;
-    }
 
-    @media (max-width: 900px) {
-      .layout {
-        flex-direction: column;
-      }
-    }
+h2 img {
+height: 42px;
+margin-bottom: 6px;
+}
 
-    /* Flash highlight for recipes panel when navigating from plan */
-    @keyframes flash {
-      0% { background: #fff8c6; }
-      100% { background: #ffffff; }
-    }
-    .flash {
-      animation: flash 0.8s ease-out;
-    }
-  </style>
+
+h3, h4 {
+color: #7c2e1c;
+font-weight: 600;
+}
+
+
+.small {
+font-size: 12px;
+color: #6b594a;
+}
+
+
+.error {
+color: #a22d22;
+font-size: 13px;
+margin-top: 4px;
+}
+
+
+.success {
+color: #3a7d44;
+font-size: 13px;
+margin-top: 4px;
+}
+
+
+.layout {
+display: flex;
+gap: 16px;
+align-items: flex-start;
+}
+
+
+.panel {
+flex: 1;
+min-width: 0;
+background: #fff7ef; /* warm parchment */
+border-radius: 10px;
+box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+padding: 14px 16px;
+box-sizing: border-box;
+border: 2px solid #e3d2bf;
+}
+
+
+.panel-section {
+margin-bottom: 16px;
+border-top: 2px dashed #d9c7b3;
+padding-top: 10px;
+}
+
+
+.panel-section:first-of-type {
+border-top: none;
+padding-top: 0;
+}
+
+
+label {
+display: block;
+font-size: 13px;
+margin-bottom: 3px;
+color: #4a3a2c;
+}
+
+
+input, textarea, select {
+box-sizing: border-box;
+width: 100%;
+padding: 6px 8px;
+margin-bottom: 6px;
+border-radius: 6px;
+border: 1px solid #bda894;
+background: #fffdf9;
+font-size: 13px;
+font-family: inherit;
+}
+
+
+textarea {
+resize: vertical;
+min-height: 50px;
+}
+
+
+button {
+padding: 7px 12px;
+border-radius: 6px;
+border: 2px solid #7c2e1c;
+background: #d9b29c;
+color: #4a2e24;
+font-size: 13px;
+cursor: pointer;
+font-weight: 600;
+transition: transform 0.15s ease, background 0.2s;
+}
+button:hover {
+background: #c89b84;
+}
+button:active {
+transform: scale(0.92);
+}
+
+
+table {
+width: 100%;
+border-collapse: collapse;
+font-size: 12px;
+margin-top: 6px;
+}
+
+
+th, td {
+border: 1px solid #d6c2ad;
+padding: 5px 7px;
+text-align: left;
+vertical-align: top;
+}
+
+
+th {
+background: #ecd9c3;
+color: #4a3a2c;
+}
+
+
+.text-muted {
+color: #877463;
+}
+
+
+@media (max-width: 900px) {
+.layout {
+flex-direction: column;
+}
+}
+
+
+/* Flash highlight */
+@keyframes flash {
+0% { background: #ffe7c2; }
+100% { background: #fff7ef; }
+}
+.flash {
+animation: flash 0.8s ease-out;
+}
+</style>
 </head>
 <body>
-  <h1>Meal Planner Admin</h1>
   <p class="small">Simple UI wired to your <code>/v1</code> Gin API.</p>
   <div id="global-message" class="small"></div>
 
   <div class="layout">
     <!-- MEAL PLANS PANEL -->
     <div class="panel" id="panel-mealplans">
-      <h2>Meal Plans</h2>
+      <h2><img src="/app/assets/MealPlans.png" alt="Meal Plans"></h2>
 
       <div class="panel-section">
-        <h3>List</h3>
         <button type="button" id="reload-mealplans-btn">Reload Meal Plans</button>
         <div id="mealplans-error" class="error"></div>
         <table id="mealplans-table">
@@ -178,10 +232,9 @@
 
     <!-- RECIPES PANEL -->
     <div class="panel" id="panel-recipes">
-      <h2>Recipes</h2>
+      <h2><img src="/app/assets/Recipes.png" alt="Recipes"></h2>
 
       <div class="panel-section">
-        <h3>List</h3>
         <button type="button" id="reload-recipes-btn">Reload Recipes</button>
         <div id="recipes-error" class="error"></div>
         <table id="recipes-table">
@@ -234,7 +287,7 @@
 
     <!-- INGREDIENTS PANEL -->
     <div class="panel" id="panel-ingredients">
-      <h2>Ingredients</h2>
+      <h2><img src="/app/assets/Ingredients.png" alt="Ingredients"></h2>
       <div id="ingredients-panel">
         <p class="small text-muted">Select a recipe to view and manage its ingredients.</p>
       </div>
