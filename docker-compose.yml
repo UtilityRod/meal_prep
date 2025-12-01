@@ -1,0 +1,53 @@
+version: "3.8"
+
+services:
+  mongo:
+    image: mongo:6
+    container_name: meal_mongo
+    restart: unless-stopped
+    volumes:
+      - mongo_data:/data/db
+    ports:
+      - "27017:27017"
+
+  redis:
+    image: redis:7
+    container_name: meal_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+
+  indexer:
+    image: golang:1.24
+    container_name: meal_indexer
+    restart: 'no'
+    volumes:
+      - ./:/src:ro
+      - ./public:/public
+    working_dir: /src
+    command: ["bash","-lc","go env -w GOPROXY=https://proxy.golang.org && go run ./cmd/build_index --file /src/all_meals.json --out /public/meals_index.json --force"]
+
+  app:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile
+    image: meal_prep:latest
+    container_name: meal_prep_app
+    restart: unless-stopped
+    depends_on:
+      - mongo
+      - redis
+    ports:
+      - "80:80"
+    environment:
+      MONGO_URI: "mongodb://mongo:27017"
+      REDIS_ADDR: "redis:6379"
+      IMPORT_MEALS_ON_START: "true"
+      MONGO_DB: "meal_prep"
+    volumes:
+      # use a named volume for public so indexer can populate it automatically
+      - ./public:/root/public
+
+volumes:
+  mongo_data:
+  
