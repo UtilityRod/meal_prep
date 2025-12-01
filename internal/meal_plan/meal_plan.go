@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 type MealPlan struct {
@@ -49,13 +50,16 @@ type UpdateMealPlanRecipeRequest struct {
 	PlannedDate *string `json:"planned_date"`
 }
 
-func ListMealPlansHandler(c *gin.Context, db *sql.DB) {
+func ListMealPlansHandler(c *gin.Context, db *sql.DB, sugar *zap.SugaredLogger) {
 	rows, err := db.Query(`
 		SELECT id, name, start_date, end_date, created_at
 		FROM meal_plans
 		ORDER BY start_date ASC, id ASC
 	`)
 	if err != nil {
+		if sugar != nil {
+			sugar.Errorw("failed to query meal plans", "error", err)
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to query meal plans"})
 		return
 	}
@@ -74,7 +78,7 @@ func ListMealPlansHandler(c *gin.Context, db *sql.DB) {
 	c.JSON(http.StatusOK, list)
 }
 
-func CreateMealPlanHandler(c *gin.Context, db *sql.DB) {
+func CreateMealPlanHandler(c *gin.Context, db *sql.DB, sugar *zap.SugaredLogger) {
 	var req CreateMealPlanRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid body"})
@@ -86,12 +90,18 @@ func CreateMealPlanHandler(c *gin.Context, db *sql.DB) {
 		VALUES (?, ?, ?)
 	`, req.Name, req.StartDate, req.EndDate)
 	if err != nil {
+		if sugar != nil {
+			sugar.Errorw("failed to insert meal plan", "error", err)
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to insert meal plan"})
 		return
 	}
 
 	id64, err := res.LastInsertId()
 	if err != nil {
+		if sugar != nil {
+			sugar.Errorw("failed to get id for meal plan", "error", err)
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get id"})
 		return
 	}
@@ -104,6 +114,9 @@ func CreateMealPlanHandler(c *gin.Context, db *sql.DB) {
 		WHERE id = ?
 	`, id).Scan(&mp.ID, &mp.Name, &mp.StartDate, &mp.EndDate, &mp.CreatedAt)
 	if err != nil {
+		if sugar != nil {
+			sugar.Errorw("created but failed to reload meal plan", "error", err)
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "created but failed to reload"})
 		return
 	}
@@ -111,7 +124,7 @@ func CreateMealPlanHandler(c *gin.Context, db *sql.DB) {
 	c.JSON(http.StatusCreated, mp)
 }
 
-func GetMealPlanHandler(c *gin.Context, db *sql.DB) {
+func GetMealPlanHandler(c *gin.Context, db *sql.DB, sugar *zap.SugaredLogger) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil || id <= 0 {
@@ -130,6 +143,9 @@ func GetMealPlanHandler(c *gin.Context, db *sql.DB) {
 		return
 	}
 	if err != nil {
+		if sugar != nil {
+			sugar.Errorw("db error getting meal plan", "error", err, "id", id)
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "db error"})
 		return
 	}
@@ -137,7 +153,7 @@ func GetMealPlanHandler(c *gin.Context, db *sql.DB) {
 	c.JSON(http.StatusOK, mp)
 }
 
-func UpdateMealPlanHandler(c *gin.Context, db *sql.DB) {
+func UpdateMealPlanHandler(c *gin.Context, db *sql.DB, sugar *zap.SugaredLogger) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil || id <= 0 {
@@ -163,6 +179,9 @@ func UpdateMealPlanHandler(c *gin.Context, db *sql.DB) {
 		return
 	}
 	if err != nil {
+		if sugar != nil {
+			sugar.Errorw("db error loading meal plan for update", "error", err, "id", id)
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "db error"})
 		return
 	}
@@ -184,6 +203,9 @@ func UpdateMealPlanHandler(c *gin.Context, db *sql.DB) {
 		WHERE id = ?
 	`, mp.Name, mp.StartDate, mp.EndDate, id)
 	if err != nil {
+		if sugar != nil {
+			sugar.Errorw("failed to update meal plan", "error", err, "id", id)
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update"})
 		return
 	}
@@ -191,7 +213,7 @@ func UpdateMealPlanHandler(c *gin.Context, db *sql.DB) {
 	c.JSON(http.StatusOK, mp)
 }
 
-func DeleteMealPlanHandler(c *gin.Context, db *sql.DB) {
+func DeleteMealPlanHandler(c *gin.Context, db *sql.DB, sugar *zap.SugaredLogger) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil || id <= 0 {
@@ -201,6 +223,9 @@ func DeleteMealPlanHandler(c *gin.Context, db *sql.DB) {
 
 	res, err := db.Exec(`DELETE FROM meal_plans WHERE id = ?`, id)
 	if err != nil {
+		if sugar != nil {
+			sugar.Errorw("failed to delete meal plan", "error", err, "id", id)
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete"})
 		return
 	}
@@ -214,7 +239,7 @@ func DeleteMealPlanHandler(c *gin.Context, db *sql.DB) {
 	c.Status(http.StatusNoContent)
 }
 
-func ListMealPlanRecipesHandler(c *gin.Context, db *sql.DB) {
+func ListMealPlanRecipesHandler(c *gin.Context, db *sql.DB, sugar *zap.SugaredLogger) {
 	mpIDStr := c.Param("id")
 	mpID, err := strconv.Atoi(mpIDStr)
 	if err != nil || mpID <= 0 {
@@ -229,6 +254,9 @@ func ListMealPlanRecipesHandler(c *gin.Context, db *sql.DB) {
 		ORDER BY planned_date ASC, id ASC
 	`, mpID)
 	if err != nil {
+		if sugar != nil {
+			sugar.Errorw("failed to query meal plan recipes", "error", err, "meal_plan_id", mpID)
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to query meal plan recipes"})
 		return
 	}
@@ -238,6 +266,9 @@ func ListMealPlanRecipesHandler(c *gin.Context, db *sql.DB) {
 	for rows.Next() {
 		var mpr MealPlanRecipe
 		if err := rows.Scan(&mpr.ID, &mpr.MealPlanID, &mpr.RecipeID, &mpr.MealType, &mpr.PlannedDate); err != nil {
+			if sugar != nil {
+				sugar.Errorw("scan error for meal plan recipes", "error", err)
+			}
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "scan error"})
 			return
 		}
@@ -247,7 +278,7 @@ func ListMealPlanRecipesHandler(c *gin.Context, db *sql.DB) {
 	c.JSON(http.StatusOK, list)
 }
 
-func CreateMealPlanRecipeHandler(c *gin.Context, db *sql.DB) {
+func CreateMealPlanRecipeHandler(c *gin.Context, db *sql.DB, sugar *zap.SugaredLogger) {
 	mpIDStr := c.Param("id")
 	mpID, err := strconv.Atoi(mpIDStr)
 	if err != nil || mpID <= 0 {
@@ -261,6 +292,9 @@ func CreateMealPlanRecipeHandler(c *gin.Context, db *sql.DB) {
 		if err == sql.ErrNoRows {
 			c.JSON(http.StatusNotFound, gin.H{"error": "meal plan not found"})
 			return
+		}
+		if sugar != nil {
+			sugar.Errorw("failed to validate meal plan", "error", err, "meal_plan_id", mpID)
 		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to validate meal plan"})
 		return
@@ -278,6 +312,9 @@ func CreateMealPlanRecipeHandler(c *gin.Context, db *sql.DB) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "recipe not found"})
 			return
 		}
+		if sugar != nil {
+			sugar.Errorw("failed to validate recipe for meal plan recipe", "error", err, "recipe_id", req.RecipeID)
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to validate recipe"})
 		return
 	}
@@ -287,12 +324,18 @@ func CreateMealPlanRecipeHandler(c *gin.Context, db *sql.DB) {
 		VALUES (?, ?, ?, ?)
 	`, mpID, req.RecipeID, req.MealType, req.PlannedDate)
 	if err != nil {
+		if sugar != nil {
+			sugar.Errorw("failed to insert meal plan recipe", "error", err, "meal_plan_id", mpID)
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to insert meal plan recipe"})
 		return
 	}
 
 	id64, err := res.LastInsertId()
 	if err != nil {
+		if sugar != nil {
+			sugar.Errorw("failed to get id for meal plan recipe", "error", err)
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get id"})
 		return
 	}
@@ -305,6 +348,9 @@ func CreateMealPlanRecipeHandler(c *gin.Context, db *sql.DB) {
 		WHERE id = ?
 	`, id).Scan(&mpr.ID, &mpr.MealPlanID, &mpr.RecipeID, &mpr.MealType, &mpr.PlannedDate)
 	if err != nil {
+		if sugar != nil {
+			sugar.Errorw("created but failed to reload meal plan recipe", "error", err, "id", id)
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "created but failed to reload"})
 		return
 	}
@@ -312,7 +358,7 @@ func CreateMealPlanRecipeHandler(c *gin.Context, db *sql.DB) {
 	c.JSON(http.StatusCreated, mpr)
 }
 
-func GetMealPlanRecipeHandler(c *gin.Context, db *sql.DB) {
+func GetMealPlanRecipeHandler(c *gin.Context, db *sql.DB, sugar *zap.SugaredLogger) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil || id <= 0 {
@@ -331,6 +377,9 @@ func GetMealPlanRecipeHandler(c *gin.Context, db *sql.DB) {
 		return
 	}
 	if err != nil {
+		if sugar != nil {
+			sugar.Errorw("db error getting meal plan recipe", "error", err, "id", id)
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "db error"})
 		return
 	}
@@ -338,7 +387,7 @@ func GetMealPlanRecipeHandler(c *gin.Context, db *sql.DB) {
 	c.JSON(http.StatusOK, mpr)
 }
 
-func UpdateMealPlanRecipeHandler(c *gin.Context, db *sql.DB) {
+func UpdateMealPlanRecipeHandler(c *gin.Context, db *sql.DB, sugar *zap.SugaredLogger) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil || id <= 0 {
@@ -364,6 +413,9 @@ func UpdateMealPlanRecipeHandler(c *gin.Context, db *sql.DB) {
 		return
 	}
 	if err != nil {
+		if sugar != nil {
+			sugar.Errorw("db error loading meal plan recipe for update", "error", err, "id", id)
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "db error"})
 		return
 	}
@@ -386,6 +438,9 @@ func UpdateMealPlanRecipeHandler(c *gin.Context, db *sql.DB) {
 		WHERE id = ?
 	`, current.RecipeID, current.MealType, current.PlannedDate, id)
 	if err != nil {
+		if sugar != nil {
+			sugar.Errorw("failed to update meal plan recipe", "error", err, "id", id)
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update"})
 		return
 	}
@@ -393,7 +448,7 @@ func UpdateMealPlanRecipeHandler(c *gin.Context, db *sql.DB) {
 	c.JSON(http.StatusOK, current)
 }
 
-func DeleteMealPlanRecipeHandler(c *gin.Context, db *sql.DB) {
+func DeleteMealPlanRecipeHandler(c *gin.Context, db *sql.DB, sugar *zap.SugaredLogger) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil || id <= 0 {
@@ -403,6 +458,9 @@ func DeleteMealPlanRecipeHandler(c *gin.Context, db *sql.DB) {
 
 	res, err := db.Exec(`DELETE FROM meal_plan_recipes WHERE id = ?`, id)
 	if err != nil {
+		if sugar != nil {
+			sugar.Errorw("failed to delete meal plan recipe", "error", err, "id", id)
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete"})
 		return
 	}

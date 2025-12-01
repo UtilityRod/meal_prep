@@ -15,6 +15,8 @@ CREATE TABLE IF NOT EXISTS recipes (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     title       TEXT NOT NULL,
     description TEXT,
+    instructions TEXT,
+    youtube_link TEXT,
     servings    INTEGER,
     prep_time   INTEGER, -- minutes
     cook_time   INTEGER, -- minutes

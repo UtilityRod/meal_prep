@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 type Ingredient struct {
@@ -28,7 +29,7 @@ type UpdateIngredientRequest struct {
 	Unit     *string `json:"unit"`     // optional
 }
 
-func ListIngredientsForRecipeHandler(c *gin.Context, db *sql.DB) {
+func ListIngredientsForRecipeHandler(c *gin.Context, db *sql.DB, sugar *zap.SugaredLogger) {
 	recipeIDStr := c.Param("id")
 	recipeID, err := strconv.Atoi(recipeIDStr)
 
@@ -45,6 +46,9 @@ func ListIngredientsForRecipeHandler(c *gin.Context, db *sql.DB) {
 	`, recipeID)
 
 	if err != nil {
+		if sugar != nil {
+			sugar.Errorw("failed to query ingredients", "error", err, "recipe_id", recipeID)
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to query ingredients"})
 		return
 	}
@@ -65,7 +69,7 @@ func ListIngredientsForRecipeHandler(c *gin.Context, db *sql.DB) {
 	c.JSON(http.StatusOK, list)
 }
 
-func CreateIngredientForRecipeHandler(c *gin.Context, db *sql.DB) {
+func CreateIngredientForRecipeHandler(c *gin.Context, db *sql.DB, sugar *zap.SugaredLogger) {
 	recipeIDStr := c.Param("id")
 	recipeID, err := strconv.Atoi(recipeIDStr)
 	if err != nil || recipeID <= 0 {
@@ -79,6 +83,9 @@ func CreateIngredientForRecipeHandler(c *gin.Context, db *sql.DB) {
 		if err == sql.ErrNoRows {
 			c.JSON(http.StatusNotFound, gin.H{"error": "recipe not found"})
 			return
+		}
+		if sugar != nil {
+			sugar.Errorw("failed to validate recipe", "error", err, "recipe_id", recipeID)
 		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to validate recipe"})
 		return
@@ -95,12 +102,18 @@ func CreateIngredientForRecipeHandler(c *gin.Context, db *sql.DB) {
 		VALUES (?, ?, ?, ?)
 	`, recipeID, req.Name, req.Quantity, req.Unit)
 	if err != nil {
+		if sugar != nil {
+			sugar.Errorw("failed to insert ingredient", "error", err, "recipe_id", recipeID)
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to insert ingredient"})
 		return
 	}
 
 	id64, err := res.LastInsertId()
 	if err != nil {
+		if sugar != nil {
+			sugar.Errorw("failed to get new ingredient id", "error", err)
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get new ingredient id"})
 		return
 	}
@@ -113,6 +126,9 @@ func CreateIngredientForRecipeHandler(c *gin.Context, db *sql.DB) {
 		WHERE id = ?
 	`, id).Scan(&ing.ID, &ing.RecipeID, &ing.Name, &ing.Quantity, &ing.Unit)
 	if err != nil {
+		if sugar != nil {
+			sugar.Errorw("created but failed to reload ingredient", "error", err, "id", id)
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "created but failed to reload"})
 		return
 	}
@@ -120,7 +136,7 @@ func CreateIngredientForRecipeHandler(c *gin.Context, db *sql.DB) {
 	c.JSON(http.StatusCreated, ing)
 }
 
-func GetIngredientHandler(c *gin.Context, db *sql.DB) {
+func GetIngredientHandler(c *gin.Context, db *sql.DB, sugar *zap.SugaredLogger) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil || id <= 0 {
@@ -139,6 +155,9 @@ func GetIngredientHandler(c *gin.Context, db *sql.DB) {
 		return
 	}
 	if err != nil {
+		if sugar != nil {
+			sugar.Errorw("db error getting ingredient", "error", err, "id", id)
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "db error"})
 		return
 	}
@@ -146,7 +165,7 @@ func GetIngredientHandler(c *gin.Context, db *sql.DB) {
 	c.JSON(http.StatusOK, ing)
 }
 
-func UpdateIngredientHandler(c *gin.Context, db *sql.DB) {
+func UpdateIngredientHandler(c *gin.Context, db *sql.DB, sugar *zap.SugaredLogger) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil || id <= 0 {
@@ -172,6 +191,9 @@ func UpdateIngredientHandler(c *gin.Context, db *sql.DB) {
 		return
 	}
 	if err != nil {
+		if sugar != nil {
+			sugar.Errorw("db error loading ingredient for update", "error", err, "id", id)
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "db error"})
 		return
 	}
@@ -193,6 +215,9 @@ func UpdateIngredientHandler(c *gin.Context, db *sql.DB) {
 		WHERE id = ?
 	`, current.Name, current.Quantity, current.Unit, id)
 	if err != nil {
+		if sugar != nil {
+			sugar.Errorw("failed to update ingredient", "error", err, "id", id)
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update"})
 		return
 	}
@@ -200,7 +225,7 @@ func UpdateIngredientHandler(c *gin.Context, db *sql.DB) {
 	c.JSON(http.StatusOK, current)
 }
 
-func DeleteIngredientHandler(c *gin.Context, db *sql.DB) {
+func DeleteIngredientHandler(c *gin.Context, db *sql.DB, sugar *zap.SugaredLogger) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil || id <= 0 {
@@ -210,6 +235,9 @@ func DeleteIngredientHandler(c *gin.Context, db *sql.DB) {
 
 	res, err := db.Exec(`DELETE FROM recipe_ingredients WHERE id = ?`, id)
 	if err != nil {
+		if sugar != nil {
+			sugar.Errorw("failed to delete ingredient", "error", err, "id", id)
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete"})
 		return
 	}
