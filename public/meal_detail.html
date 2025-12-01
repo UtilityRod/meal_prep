@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="stylesheet" href="/app/css/styles.css">
+  <title>Meal Detail</title>
+  <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+  <style>
+    .thumb { display:block; max-width:280px; width:100%; border-radius:8px; margin: 8px 12px 8px 0; box-sizing:border-box; }
+    .meta-left { padding-right:12px; }
+    .field-row { display:flex; gap:12px; align-items:center; }
+    .meta-left { flex:0 0 320px; }
+    .meta-right { flex:1; }
+    .ingredients-table input { width:100%; box-sizing:border-box; }
+    .video-wrap { margin-top:8px; }
+    /* Home link styling */
+    .home-link {
+      text-decoration: none;
+      color: #7c2e1c;
+      font-weight: 700;
+      padding: 6px 10px;
+      border-radius: 8px;
+      background: #fff7f0;
+      border: 1px solid rgba(124,46,28,0.06);
+      transition: box-shadow 120ms ease, transform 80ms ease;
+      cursor: pointer;
+    }
+    .home-link:hover {
+      box-shadow: 0 8px 24px rgba(124,46,28,0.12);
+      transform: translateY(-2px);
+    }
+    .home-link:focus {
+      outline: 3px solid rgba(124,46,28,0.12);
+      outline-offset: 2px;
+    }
+  </style>
+</head>
+<body>
+  <header style="margin-bottom:10px; display:flex; align-items:center; gap:12px; justify-content:space-between;">
+    <div style="display:flex; align-items:center; gap:12px;">
+      <div>
+        <h1 style="margin:0 0 0 8px;">Meal Detail</h1>
+      </div>
+    </div>
+    <div>
+      <a href="/" class="home-link">Home</a>
+    </div>
+  </header>
+
+  <main style="margin-top:12px; display:flex; gap:16px;">
+    <section class="panel meta-left">
+      <img id="thumb" class="thumb" src="/app/assets/meal_icon.svg" alt="meal thumb" />
+      <h3 id="meal-title"></h3>
+      <div class="small text-muted" id="meal-meta"></div>
+      <div style="margin-top:8px;">
+        <label>Description</label>
+        <input id="description" placeholder="Optional description">
+      </div>
+
+      <div style="display:flex; gap:12px; margin-top:8px;">
+        <div style="flex:1;">
+          <label>Servings (integer)</label>
+          <input id="servings" type="number" min="1" step="1" inputmode="numeric" pattern="[0-9]*">
+        </div>
+        <div style="flex:1;">
+          <label>Prep Time (minutes)</label>
+          <input id="prep_time" type="number" min="0">
+        </div>
+        <div style="flex:1;">
+          <label>Cook Time (minutes)</label>
+          <input id="cook_time" type="number" min="0">
+        </div>
+      </div>
+
+      <div style="margin-top:10px;">
+        <button id="add-recipe">Add to My Recipes</button>
+      </div>
+    </section>
+
+    <section class="panel meta-right">
+      <h3>Instructions</h3>
+      <div id="instructions-editor" style="height:200px; background:#fff"></div>
+
+      <h3 style="margin-top:12px">Ingredients & Measurements</h3>
+      <table class="ingredients-table">
+        <thead>
+          <tr><th>Name</th><th>Measure</th></tr>
+        </thead>
+        <tbody id="ingredients-body"></tbody>
+      </table>
+
+      <div style="margin-top:12px;">
+        <div id="video-container" class="video-wrap" style="display:none"></div>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
+  <script>
+    const params = new URLSearchParams(location.search);
+    const id = params.get('id');
+    const titleEl = document.getElementById('meal-title');
+    const metaEl = document.getElementById('meal-meta');
+    const thumbEl = document.getElementById('thumb');
+    const instrEditorEl = document.getElementById('instructions-editor');
+    const ingredientsBody = document.getElementById('ingredients-body');
+    const videoContainer = document.getElementById('video-container');
+
+    const quill = new Quill('#instructions-editor', { theme: 'snow' });
+
+    async function loadMeal() {
+      if (!id) return;
+      try {
+        const res = await fetch('/v1/meals/' + encodeURIComponent(id));
+        if (!res.ok) throw new Error('fetch failed');
+        const m = await res.json();
+        titleEl.textContent = m.strMeal || '';
+        metaEl.textContent = (m.strCategory||'') + ' • ' + (m.strArea||'');
+        thumbEl.src = m.strMealThumb || '/app/assets/meal_icon.svg';
+
+        // instructions
+        quill.setText(m.strInstructions || '');
+          currentMeal = m;
+
+        // ingredients
+        ingredientsBody.innerHTML = '';
+        if (Array.isArray(m.ingredients)) {
+          m.ingredients.forEach(row => {
+            const tr = document.createElement('tr');
+            const tdName = document.createElement('td');
+            const nameInput = document.createElement('input');
+            nameInput.value = row.name || '';
+            tdName.appendChild(nameInput);
+            const tdMeasure = document.createElement('td');
+            const mInput = document.createElement('input');
+            mInput.value = row.measure || '';
+            tdMeasure.appendChild(mInput);
+            tr.appendChild(tdName);
+            tr.appendChild(tdMeasure);
+            ingredientsBody.appendChild(tr);
+          });
+        }
+
+        // youtube: if the meal has a YouTube link, show the embedded player (no autoplay).
+        // If not, show a message and an input so users can paste a YouTube link to preview.
+        videoContainer.innerHTML = '';
+        if (m.strYoutube) {
+          const vid = extractYoutubeID(m.strYoutube);
+          if (vid) {
+            videoContainer.innerHTML = `<iframe width="560" height="315" src="https://www.youtube.com/embed/${vid}" frameborder="0" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+            videoContainer.style.display = 'block';
+          } else {
+            showNoYoutubeInput();
+          }
+        } else {
+          showNoYoutubeInput();
+        }
+
+      } catch (err) {
+        titleEl.textContent = 'Failed to load meal';
+        console.error(err);
+      }
+    }
+
+    function extractYoutubeID(url) {
+      try {
+        const u = new URL(url);
+        if (u.hostname.includes('youtu.be')) return u.pathname.slice(1);
+        return u.searchParams.get('v');
+      } catch(e) { return null }
+    }
+
+    function showNoYoutubeInput() {
+      videoContainer.style.display = 'block';
+      videoContainer.innerHTML = `
+        <div class="small text-muted">No youtube data available</div>
+        <div style="margin-top:6px; display:flex; gap:8px; align-items:center;">
+          <input id="youtube-link-input" type="text" placeholder="Paste YouTube link to preview" style="flex:1;" />
+          <button id="youtube-preview-btn" type="button">Preview</button>
+        </div>
+        <div id="youtube-preview-area" style="margin-top:8px;"></div>
+      `;
+
+      const input = document.getElementById('youtube-link-input');
+      const btn = document.getElementById('youtube-preview-btn');
+      const previewArea = document.getElementById('youtube-preview-area');
+
+      btn.addEventListener('click', () => {
+        const url = input.value.trim();
+        if (!url) return;
+        const vid = extractYoutubeID(url);
+        if (!vid) {
+          previewArea.innerHTML = '<div class="small text-muted">Invalid YouTube link</div>';
+          return;
+        }
+        previewArea.innerHTML = `<iframe width="560" height="315" src="https://www.youtube.com/embed/${vid}" frameborder="0" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+      });
+    }
+
+    // add-to-recipe handler: gather page fields, validate and POST to server
+    let currentMeal = null;
+    document.getElementById('add-recipe').addEventListener('click', async () => {
+      // Gather form values from page
+      const title = document.getElementById('meal-title').textContent || '';
+      const description = document.getElementById('description').value.trim() || null;
+      const servingsVal = document.getElementById('servings').value;
+      const prepVal = document.getElementById('prep_time').value;
+      const cookVal = document.getElementById('cook_time').value;
+      const instructions = quill.root ? quill.root.innerHTML : '';
+
+      // get youtube from preview input if present, else from loaded meal
+      let youtube = null;
+      const yInput = document.getElementById('youtube-link-input');
+      if (yInput && yInput.value.trim()) youtube = yInput.value.trim();
+      else if (currentMeal && currentMeal.strYoutube) youtube = currentMeal.strYoutube;
+
+      // collect ingredients from table rows
+      const ingRows = Array.from(document.querySelectorAll('#ingredients-body tr'));
+      const ingredients = ingRows.map(tr => {
+        const nameInput = tr.querySelector('td:nth-child(1) input');
+        const measureInput = tr.querySelector('td:nth-child(2) input');
+        return {
+          name: nameInput ? nameInput.value.trim() : '',
+          measure: measureInput ? measureInput.value.trim() : ''
+        };
+      }).filter(i => i.name);
+
+      // validate youtube (use extractYoutubeID)
+      if (youtube) {
+        const vid = extractYoutubeID(youtube);
+        if (!vid) {
+          if (!confirm('You entered an invalid YouTube link. Continue without a link?')) return;
+          youtube = null;
+        }
+      }
+
+      // validate servings: ensure integer if provided
+      if (servingsVal) {
+        const asNum = Number(servingsVal);
+        if (!Number.isInteger(asNum) || asNum < 1) {
+          alert('Servings must be a positive integer.');
+          return;
+        }
+      }
+
+      const payload = {
+        title: title || 'Untitled',
+        description: description,
+        servings: servingsVal ? parseInt(servingsVal, 10) : null,
+        prep_time: prepVal ? parseInt(prepVal, 10) : null,
+        cook_time: cookVal ? parseInt(cookVal, 10) : null,
+        instructions: instructions || null,
+        youtube_link: youtube || null,
+        ingredients: ingredients
+      };
+
+      try {
+        const res = await fetch('/v1/recipes/import-from-meal', {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) {
+          const txt = await res.text();
+          throw new Error(txt || res.statusText);
+        }
+        // success: redirect to home
+        window.location.href = '/';
+      } catch (err) {
+        alert('Failed to add recipe: ' + (err.message || err));
+      }
+    });
+
+    loadMeal();
+  </script>
+</body>
+</html>

@@ -1,0 +1,356 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/app/css/styles.css">
+  <title>Meal Search</title>
+  <script src="https://cdn.jsdelivr.net/npm/fuse.js@6.6.2/dist/fuse.min.js"></script>
+  <style>
+    /* Small additions specific to this page */
+    .search-controls { display: flex; flex-direction: column; gap: 10px; }
+    .inline-row { display:flex; gap:10px; }
+    .chip { display:inline-flex; align-items:center; gap:8px; padding:6px 8px; background:#fff2e6; border:1px solid #e6c8b3; border-radius:20px; margin:4px; }
+    .chip button { border:none; background:transparent; cursor:pointer; font-weight:700; color:#7c2e1c; }
+    .dropdown { position:relative; }
+    .dropdown-panel { position:absolute; z-index:40; left:0; right:0; top:calc(100% + 6px); background:#fffdf9; border:1px solid #d7c6b1; border-radius:8px; padding:8px; box-shadow:0 4px 12px rgba(0,0,0,0.08); max-height:220px; overflow:auto; }
+    .ingredients-list { display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
+    .results { min-height:200px; }
+    .result-item { display:flex; gap:12px; align-items:flex-start; padding:10px; border-radius:8px; border:1px solid #efe0cf; margin-bottom:8px; background:#fffaf6; }
+    .result-item img { width:84px; height:84px; object-fit:cover; border-radius:6px; }
+    .muted-note { font-size:12px; color:#877463; }
+    /* Home link styling */
+    .home-link {
+      text-decoration: none;
+      color: #7c2e1c;
+      font-weight: 700;
+      padding: 6px 10px;
+      border-radius: 8px;
+      background: #fff7f0;
+      border: 1px solid rgba(124,46,28,0.06);
+      transition: box-shadow 120ms ease, transform 80ms ease;
+      cursor: pointer;
+    }
+    .home-link:hover {
+      box-shadow: 0 8px 24px rgba(124,46,28,0.12);
+      transform: translateY(-2px);
+    }
+    .home-link:focus {
+      outline: 3px solid rgba(124,46,28,0.12);
+      outline-offset: 2px;
+    }
+    /* Ingredient panel grid and item styles */
+    .ingredients-panel-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 6px;
+      max-height: 220px;
+      overflow: auto;
+      padding: 6px 4px;
+    }
+    .ingredient-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 8px;
+      border-radius: 6px;
+      background: #fffdf9;
+      border: 1px solid #e6c8b3;
+      cursor: pointer;
+      user-select: none;
+    }
+    .ingredient-item input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      margin: 0;
+      flex: 0 0 16px;
+    }
+    .ingredient-item:focus-within {
+      outline: 3px solid rgba(124,46,28,0.12);
+      outline-offset: 2px;
+    }
+    .ingredient-search {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 8px 10px;
+      margin-bottom: 8px;
+      border-radius: 6px;
+      border: 1px solid #e6d8c2;
+      background: #fff;
+    }
+  </style>
+</head>
+<body>
+  <header style="margin-bottom:10px; display:flex; align-items:center; gap:14px; justify-content:space-between;">
+    <div style="display:flex; align-items:center; gap:12px;">
+      <div>
+        <h1 class="title-row">Meal Search</h1>
+        <div class="small text-muted">Search meals by name, category, area or ingredients</div>
+      </div>
+    </div>
+    <div>
+      <a href="/" class="home-link">Home</a>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="panel" style="max-width:420px;">
+      <div class="panel-section">
+        <form id="search-form" class="search-controls" onsubmit="return false;">
+          <div>
+            <label for="q-name">Meal Name</label>
+            <input id="q-name" type="text" placeholder="e.g. Chicken Alfredo">
+          </div>
+
+          <div class="inline-row">
+            <div style="flex:1;">
+              <label for="q-category">Category</label>
+              <input id="q-category" type="text" placeholder="e.g. Seafood">
+            </div>
+            <div style="width:140px;">
+              <label for="q-area">Area</label>
+              <input id="q-area" type="text" placeholder="e.g. Italian">
+            </div>
+          </div>
+
+          <div>
+            <label>Ingredients</label>
+            <div class="dropdown">
+              <button id="toggle-ingredients" type="button">Choose ingredients ▾</button>
+              <div id="ingredients-panel" class="dropdown-panel" style="display:none;">
+                <div>
+                  <!-- example ingredient list; this will be populated dynamically later -->
+                  <label><input type="checkbox" value="Chicken"> Chicken</label><br>
+                  <label><input type="checkbox" value="Garlic"> Garlic</label><br>
+                  <label><input type="checkbox" value="Salt"> Salt</label><br>
+                  <label><input type="checkbox" value="Onion"> Onion</label><br>
+                  <label><input type="checkbox" value="Tomato"> Tomato</label><br>
+                </div>
+              </div>
+            </div>
+            <div id="selected-ingredients" class="ingredients-list" aria-live="polite"></div>
+            <div class="muted-note">Tip: select multiple ingredients then press Search. Remove a tag to exclude it.</div>
+          </div>
+
+          <div style="display:flex; gap:10px; margin-top:6px;">
+            <button id="search-btn" type="button">Search</button>
+            <button id="clear-btn" type="button">Clear</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <aside class="panel">
+      <div class="panel-section">
+        <h3>Results</h3>
+        <div id="results" class="results">
+          <div class="small text-muted">No results yet. Enter search criteria and click Search.</div>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <script>
+    // Lightweight UI to manage ingredient selection chips and panel
+    const toggleBtn = document.getElementById('toggle-ingredients');
+    const panel = document.getElementById('ingredients-panel');
+    const selectedContainer = document.getElementById('selected-ingredients');
+    const searchBtn = document.getElementById('search-btn');
+    const clearBtn = document.getElementById('clear-btn');
+    const results = document.getElementById('results');
+
+    toggleBtn.addEventListener('click', () => {
+      panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+    });
+
+    // Toggle checkboxes inside panel
+    panel.addEventListener('change', (e) => {
+      const cb = e.target;
+      if (cb && cb.type === 'checkbox') {
+        updateSelectedIngredients();
+      }
+    });
+
+    function updateSelectedIngredients() {
+      selectedContainer.innerHTML = '';
+      const checked = Array.from(panel.querySelectorAll('input[type=checkbox]:checked'));
+      checked.forEach(cb => {
+        const chip = document.createElement('span');
+        chip.className = 'chip';
+        chip.textContent = cb.value;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.textContent = '✕';
+        btn.title = 'Remove';
+        btn.addEventListener('click', () => {
+          cb.checked = false;
+          updateSelectedIngredients();
+        });
+        chip.appendChild(btn);
+        selectedContainer.appendChild(chip);
+      });
+    }
+
+    // Clear form
+    clearBtn.addEventListener('click', () => {
+      document.getElementById('q-name').value = '';
+      document.getElementById('q-category').value = '';
+      document.getElementById('q-area').value = '';
+      panel.querySelectorAll('input[type=checkbox]').forEach(cb => cb.checked = false);
+      updateSelectedIngredients();
+      results.innerHTML = '<div class="small text-muted">Cleared.</div>';
+    });
+
+    // Run Fuse search against the loaded index
+    searchBtn.addEventListener('click', () => {
+      if (!fuse) {
+        results.innerHTML = '<div class="error">Search index not loaded yet.</div>';
+        return;
+      }
+
+      const name = document.getElementById('q-name').value.trim();
+      const category = document.getElementById('q-category').value.trim();
+      const area = document.getElementById('q-area').value.trim();
+      const ingredients = Array.from(panel.querySelectorAll('input[type=checkbox]:checked')).map(i => i.value);
+
+      const queryParts = [];
+      if (name) queryParts.push(name);
+      if (category) queryParts.push(category);
+      if (area) queryParts.push(area);
+      if (ingredients.length) queryParts.push(ingredients.join(' '));
+
+      const q = queryParts.join(' ').trim();
+
+      let hits = [];
+      if (q === '') {
+        // no query -> show none or maybe top recent; we'll show empty notice
+        results.innerHTML = '<div class="small text-muted">Please enter search criteria.</div>';
+        return;
+      }
+
+      try {
+        const raw = fuse.search(q, { limit: 100 });
+        hits = raw.map(r => r.item || r);
+      } catch (err) {
+        // fallback: simple filter
+        hits = mealsIndex.filter(m => {
+          const hay = [m.strMeal, m.strCategory, m.strArea, (m.ingredients||[]).join(' ')].join(' ').toLowerCase();
+          return q.toLowerCase().split(' ').every(tok => hay.includes(tok));
+        });
+      }
+
+      // Render results
+      results.innerHTML = '';
+      if (!hits.length) {
+        results.innerHTML = '<div class="small text-muted">No results</div>';
+        return;
+      }
+
+      hits.forEach(h => {
+        const hit = document.createElement('div');
+        hit.className = 'result-item';
+        const img = document.createElement('img');
+        img.src = h.strMealThumb || '/app/assets/meal_icon.svg';
+        img.alt = h.strMeal || 'meal';
+        const meta = document.createElement('div');
+        const title = document.createElement('div');
+        title.innerHTML = `<strong>${escapeHtml(h.strMeal || '')}</strong> <div class="small text-muted">ID: ${escapeHtml(h.idMeal || '')} • ${escapeHtml(h.strArea || '')} • ${escapeHtml(h.strCategory || '')}</div>`;
+        meta.appendChild(title);
+        if (h.ingredients && h.ingredients.length) {
+          const ing = document.createElement('div');
+          ing.className = 'small';
+          ing.textContent = 'Ingredients: ' + h.ingredients.slice(0,6).join(', ');
+          meta.appendChild(ing);
+        }
+          // make result clickable to open detail page
+          hit.appendChild(img);
+          hit.appendChild(meta);
+          hit.style.cursor = 'pointer';
+          hit.addEventListener('click', () => {
+            if (h.idMeal) window.location.href = '/meal_detail.html?id=' + encodeURIComponent(h.idMeal);
+          });
+          results.appendChild(hit);
+      });
+    });
+
+    function escapeHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!panel.contains(e.target) && e.target !== toggleBtn) panel.style.display = 'none';
+    });
+
+    // Load the prebuilt index (public/meals_index.json) and init Fuse
+    let mealsIndex = [];
+    let fuse = null;
+
+    async function loadIndex() {
+      try {
+        const res = await fetch('/app/meals_index.json');
+        if (!res.ok) throw new Error('index not found');
+        mealsIndex = await res.json();
+
+        // build unique ingredient list and populate checkboxes
+        const ingSet = new Set();
+        mealsIndex.forEach(m => (m.ingredients || []).forEach(i => { if (i) ingSet.add(i); }));
+        const ingArr = Array.from(ingSet).sort((a,b)=>a.localeCompare(b));
+        const ingredientsPanel = document.getElementById('ingredients-panel');
+        ingredientsPanel.innerHTML = '';
+
+        // create a small search box for filtering ingredients
+        const searchBox = document.createElement('input');
+        searchBox.type = 'search';
+        searchBox.placeholder = 'Filter ingredients';
+        searchBox.className = 'ingredient-search';
+        searchBox.setAttribute('aria-label', 'Filter ingredients');
+        ingredientsPanel.appendChild(searchBox);
+
+        // grid container for ingredient items
+        const container = document.createElement('div');
+        container.className = 'ingredients-panel-grid';
+
+        function renderIngredients(filter = '') {
+          container.innerHTML = '';
+          const q = (filter || '').trim().toLowerCase();
+          ingArr.forEach(name => {
+            if (q && !name.toLowerCase().includes(q)) return;
+            const lbl = document.createElement('label');
+            lbl.className = 'ingredient-item';
+
+            const cb = document.createElement('input');
+            cb.type = 'checkbox';
+            cb.value = name;
+            cb.setAttribute('aria-label', name);
+
+            const txt = document.createElement('span');
+            txt.textContent = name;
+
+            lbl.appendChild(cb);
+            lbl.appendChild(txt);
+            container.appendChild(lbl);
+          });
+        }
+
+        renderIngredients();
+
+        searchBox.addEventListener('input', (e) => renderIngredients(e.target.value));
+
+        ingredientsPanel.appendChild(container);
+
+        // Init Fuse
+        fuse = new Fuse(mealsIndex, {
+          keys: ['strMeal','strCategory','strArea','ingredients'],
+          includeScore: true,
+          threshold: 0.35,
+          useExtendedSearch: true,
+        });
+      } catch (err) {
+        console.warn('failed to load meals index:', err);
+      }
+    }
+
+    loadIndex();
+  </script>
+</body>
+</html>
