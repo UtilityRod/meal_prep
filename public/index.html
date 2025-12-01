@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<img src="/app/assets/MealPlannerAdmin.png" alt="Ingredients">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
 /* Retro playful theme: tans, browns, burnt red accents */
 body {
@@ -114,7 +114,7 @@ min-height: 50px;
 
 
 button {
-padding: 7px 12px;
+padding: 10px 14px;
 border-radius: 6px;
 border: 2px solid #7c2e1c;
 background: #d9b29c;
@@ -137,6 +137,10 @@ width: 100%;
 border-collapse: collapse;
 font-size: 12px;
 margin-top: 6px;
+ /* make tables horizontally scrollable on small screens */
+display: block;
+overflow-x: auto;
+white-space: nowrap;
 }
 
 
@@ -174,9 +178,21 @@ flex-direction: column;
 .flash {
 animation: flash 0.8s ease-out;
 }
+#site-logo {
+  height: 56px;
+  max-width: 100%;
+  display: block;
+  margin: 0 0 10px 0;
+}
+@media (max-width: 480px) {
+  #site-logo { height: 40px; }
+}
 </style>
 </head>
 <body>
+  <header style="margin-bottom:10px;">
+    <img id="site-logo" src="/app/assets/MealPlannerAdmin.png" alt="Meal Planner Admin">
+  </header>
   <p class="small">Simple UI wired to your <code>/v1</code> Gin API.</p>
   <div id="global-message" class="small"></div>
 
